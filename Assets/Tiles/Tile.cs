@@ -3,13 +3,12 @@ using System.Collections;
 
 public class Tile : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-	
+	public IntVec2 position;
+	public Board board;
+
+	public virtual bool ValidateSides()
+	{
+		return false;
 	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+
 }

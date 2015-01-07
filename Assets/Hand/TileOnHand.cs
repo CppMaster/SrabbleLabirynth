@@ -9,13 +9,20 @@ public class TileOnHand : MonoBehaviour {
 	Camera cam;
 	Board board;
 	bool isValid = false;
+	Tile tile;
 
 	public GameObject ghost;
 
 	void Awake()
 	{
 		cam = Camera.main;
+		tile = GetComponent<Tile>();
 		board = GameObject.FindObjectOfType<Board>();
+
+		ghost = (GameObject)Instantiate(ghost);
+		ghost.transform.parent = transform;
+		ghost.renderer.enabled = false;
+		((ScrabbleElement)tile).SetValue(ScrabbleElement.GetValidRandomValue());
 	}
 
 	void OnMouseDrag()
@@ -27,7 +34,7 @@ public class TileOnHand : MonoBehaviour {
 	void OnMouseUp()
 	{
 		if(!isValid) return;
-		board.Spawn(GetComponent<Tile>(), ghost.transform.position);
+		board.Spawn(tile, ghost.transform.position);
 		Destroy(ghost);
 		Destroy(this);
 	}
@@ -46,7 +53,7 @@ public class TileOnHand : MonoBehaviour {
 	void SetGhostPosition()
 	{
 		ghost.transform.position = transform.position;
-		isValid = board.SnapGhost(ghost);
+		isValid = board.SnapGhost(ghost, tile);
 		ghost.renderer.enabled = isValid;
 	}
 }
