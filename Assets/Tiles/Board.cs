@@ -1,21 +1,58 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Board : MonoBehaviour {
 
 	public IntVec2 size;
 	public Vector2 tileOffset;
 
-	public GameObject tileGO;
+	public HandRoot handRoot;
+	public Transform tilesRoot;
+	public Transform charactersRoot;
+	GameObject displayedMoves = null;
 
 	Tile[,] tiles;
+	IntVec2 startPosition;
+
+	PlayerCharacter[] players;
+
+	public GameObject tileGO;
+	public GameObject hintGO;
 	
 	void Start () 
 	{
 		tiles = new Tile[size.x,size.y];
+		startPosition = new IntVec2(size.x/2, size.y/2);
 
-		Spawn(size.x/2, size.y/2);
-		((ScrabbleElement)tiles[size.x/2, size.y/2]).SetValue(ScrabbleElement.startElementValue);
+		Spawn(startPosition.x, startPosition.y);
+		((ScrabbleElement)tiles[startPosition.x, startPosition.y]).SetValue(ScrabbleElement.startElementValue);
+
+		SpawnPlayers();
+	}
+
+	void SpawnPlayers()
+	{
+		players = new PlayerCharacter[handRoot.players];
+		for(int a = 0; a < players.Length; ++a)
+		{
+			GameObject playerGO = (GameObject)Instantiate(PlayerCharacter.GetResourceObject());
+			players[a] = playerGO.GetComponent<PlayerCharacter>();
+			players[a].player = a + 1;
+			playerGO.transform.parent = charactersRoot;
+			MovePlayer(players[a], startPosition);
+		}
+	}
+
+	public Tile GetTile(IntVec2 pos)
+	{
+		if(pos.x < 0 || pos.y < 0 || size.x <= pos.x || size.y <= pos.y) return null;
+		return tiles[pos.x, pos.y];
+	}
+
+	public IntVec2 GetStarsPosition()
+	{
+		return startPosition;
 	}
 
 	public void Spawn(Tile tile, Vector3 pos)
@@ -29,6 +66,10 @@ public class Board : MonoBehaviour {
 		tile.position = gridPosition;
 		tile.board = this;
 		tiles[gridPosition.x, gridPosition.y] = tile;
+		tile.transform.parent = tilesRoot;
+
+		handRoot.RemoveFromHand(tile);
+		handRoot.NextState();
 	}
 
 	void Spawn(int x, int y)
@@ -41,6 +82,37 @@ public class Board : MonoBehaviour {
 		tile.position = new IntVec2(x,y);
 		tile.board = this;
 		tiles[x,y] = tile;
+		tile.transform.parent = tilesRoot;
+
+	}
+
+	public void MovePlayer(PlayerCharacter player, IntVec2 pos)
+	{
+		player.transform.position = new Vector3(
+			pos.x * tileOffset.x,
+			player.transform.position.y,
+			pos.y * tileOffset.y
+			) + player.BoardOffset;
+		player.BoardPosition = pos;
+	}
+
+	public void MovePlayer(int player, IntVec2 pos)
+	{
+		MovePlayer(players[player], pos);
+	}
+
+	public Vector3 GridToWorldPosition(IntVec2 pos)
+	{
+		return new Vector3(
+			pos.x * tileOffset.x,
+			0,
+			pos.y * tileOffset.y
+			);
+	}
+
+	public IntVec2 WorldToGridPosition(Vector3 pos)
+	{
+		return new IntVec2(Mathf.RoundToInt(pos.x / tileOffset.x), Mathf.RoundToInt(pos.y / tileOffset.y));
 	}
 
 	public bool SnapGhost(GameObject ghost, Tile tile)
@@ -52,11 +124,7 @@ public class Board : MonoBehaviour {
 		if(!ValidateSpawn(gridPosition)) return false;
 		if(!ValidateSides(gridPosition, tile)) return false;
 
-		ghost.transform.position = new Vector3(
-			gridPosition.x * tileOffset.x,
-			0,
-			gridPosition.y * tileOffset.y
-			);
+		ghost.transform.position = GridToWorldPosition(gridPosition);
 
 		return true;
 	}
@@ -127,5 +195,45 @@ public class Board : MonoBehaviour {
 	{
 		if(!ValidatePosition(pos) || !ValidateSpace(pos)) return false;
 		return HasNeighbour(pos);
+	}
+
+	public void ShowMovesForPlayer(int _player)
+	{
+		PlayerCharacter player = players[_player];
+		ScrabbleElement tile = GetTile(player.BoardPosition) as ScrabbleElement;
+		IntVec2[] neighbours = GetNeighbours(player.BoardPosition);
+		List<IntVec2> possibilities = new List<IntVec2>();
+
+		for(int a = 0; a < 4; ++a)
+		{
+			ScrabbleElement tileNeighbour = GetTile(neighbours[a]) as ScrabbleElement;
+			if(tileNeighbour == null) continue;
+			int sideValue = tile.GetSideValue(a);
+			Debug.Log("SideValue: " + sideValue);
+			if(sideValue < 2) continue;
+			possibilities.Add(neighbours[a]);
+		}
+
+		SpawnHints(possibilities.ToArray());
+	}
+
+	public void SpawnHints(IntVec2[] positions)
+	{
+		DestroyHints();
+		displayedMoves = new GameObject();
+		displayedMoves.transform.parent = transform;
+
+		foreach(IntVec2 pos in positions)
+		{
+			GameObject hint = (GameObject) Instantiate(hintGO);
+			hint.transform.parent = displayedMoves.transform;
+			hint.transform.position = GridToWorldPosition(pos) + Vector3.up * 0.6f;
+			hint.GetComponent<HintTile>().position = pos;
+		}
+	}
+
+	public void DestroyHints()
+	{
+		if(displayedMoves != null) Destroy(displayedMoves);
 	}
 }

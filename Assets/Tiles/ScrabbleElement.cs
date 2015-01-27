@@ -8,6 +8,8 @@ public class ScrabbleElement : Tile {
 	public const int possibilities = states * states * states * states;
 	public const int startElementValue = possibilities - 1;
 
+	int player = 0;
+
 	[ContextMenu ("Start")]
 	void Start () 
 	{
@@ -116,5 +118,11 @@ public class ScrabbleElement : Tile {
 		}
 		return val % states;
 	}
-	
+
+	public void MarkPlayer(int _player)
+	{
+		player = _player;
+		renderer.material = Tile.GetCubeMaterial(player);
+	}
+
 }

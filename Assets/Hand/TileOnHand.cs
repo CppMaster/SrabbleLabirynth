@@ -11,7 +11,12 @@ public class TileOnHand : MonoBehaviour {
 	bool isValid = false;
 	Tile tile;
 
+	int player;
+
 	public GameObject ghost;
+
+	static GameObject ghostGO;
+	static Material[] ghostMaterials;
 
 	void Awake()
 	{
@@ -19,16 +24,34 @@ public class TileOnHand : MonoBehaviour {
 		tile = GetComponent<Tile>();
 		board = GameObject.FindObjectOfType<Board>();
 
-		ghost = (GameObject)Instantiate(ghost);
+		LoadResources();
+
+		ghost = (GameObject)Instantiate(ghostGO);
 		ghost.transform.parent = transform;
 		ghost.renderer.enabled = false;
+		ghost.renderer.material = ghostMaterials[player];
 		((ScrabbleElement)tile).SetValue(ScrabbleElement.GetValidRandomValue());
+	}
+
+	static void LoadResources()
+	{
+		if(ghostGO != null) return;
+		ghostGO = (GameObject)Resources.Load("Prefabs/Ghost");
+		ghostMaterials = new Material[Hand.maxPlayers + 1];
+		for(int a = 0; a <= Hand.maxPlayers; ++a)
+		{
+			ghostMaterials[a] = (Material) Resources.Load("Materials/PlayerGhost" + a);
+		}
+
 	}
 
 	void OnMouseDrag()
 	{
-		SetTilePosition();
-		SetGhostPosition();
+		if(HandRoot.Instance.turnState == TurnState.SetTile)
+		{
+			SetTilePosition();
+			SetGhostPosition();
+		}
 	}
 
 	void OnMouseUp()
@@ -37,6 +60,7 @@ public class TileOnHand : MonoBehaviour {
 		board.Spawn(tile, ghost.transform.position);
 		Destroy(ghost);
 		Destroy(this);
+		isValid = false;
 	}
 
 	void SetTilePosition()
@@ -55,5 +79,11 @@ public class TileOnHand : MonoBehaviour {
 		ghost.transform.position = transform.position;
 		isValid = board.SnapGhost(ghost, tile);
 		ghost.renderer.enabled = isValid;
+	}
+
+	public void MarkPlayer(int _player)
+	{
+		player = _player;
+		if(ghost) ghost.renderer.material = ghostMaterials[player];
 	}
 }
